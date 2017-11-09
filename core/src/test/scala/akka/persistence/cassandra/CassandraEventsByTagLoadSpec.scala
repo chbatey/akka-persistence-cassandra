@@ -43,6 +43,7 @@ object CassandraEventsByTagLoadSpec {
        |cassandra-snapshot-store.keyspace=CassandraEventsByTagLoadSpecSnapshot
        |cassandra-query-journal = {
        |  first-time-bucket = "20171105"
+       |  eventual-consistency-delay = 1s
        |}
        |akka.actor.serialize-messages=off
     """.stripMargin
