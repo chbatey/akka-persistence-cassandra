@@ -13,6 +13,7 @@ import akka.persistence.cassandra.journal.{ BucketSize, TimeBucket }
 import akka.persistence.cassandra.query.EventsByTagStage._
 import akka.stream.stage.{ GraphStage, _ }
 import akka.stream.{ ActorMaterializer, Attributes, Outlet, SourceShape }
+import akka.cassandra.session._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration

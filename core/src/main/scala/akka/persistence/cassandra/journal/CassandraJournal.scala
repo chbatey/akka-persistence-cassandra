@@ -11,6 +11,7 @@ import java.util.{ UUID, HashMap => JHMap, Map => JMap }
 import akka.Done
 import akka.actor.{ ActorRef, ActorSystem, ExtendedActorSystem, NoSerializationVerificationNeeded }
 import akka.annotation.{ DoNotInherit, InternalApi }
+import akka.cassandra.session.scaladsl.CassandraSession
 import akka.event.{ Logging, LoggingAdapter }
 import akka.persistence._
 import akka.persistence.cassandra.EventWithMetaData.UnknownMetaData
@@ -18,7 +19,6 @@ import akka.persistence.cassandra._
 import akka.persistence.cassandra.journal.TagWriters.{ BulkTagWrite, TagWrite, TagWritersSession }
 import akka.persistence.cassandra.query.EventsByPersistenceIdStage.Extractors
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
-import akka.persistence.cassandra.session.scaladsl.CassandraSession
 import akka.persistence.journal.{ AsyncWriteJournal, Tagged }
 import akka.persistence.query.PersistenceQuery
 import akka.serialization.{ AsyncSerializer, Serialization, SerializationExtension }
@@ -31,6 +31,7 @@ import com.datastax.driver.core.policies.RetryPolicy.RetryDecision
 import com.datastax.driver.core.policies.{ LoggingRetryPolicy, RetryPolicy }
 import com.datastax.driver.core.utils.{ Bytes, UUIDs }
 import com.typesafe.config.Config
+import akka.cassandra.session._
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
@@ -78,20 +79,18 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
     context.dispatcher,
     log,
     metricsCategory = s"${self.path.name}",
-    init = session =>
+    init = (session: Session) =>
       executeCreateKeyspaceAndTables(session, config))
-
-  private val tagWriterSession = TagWritersSession(
-    preparedWriteToTagViewWithoutMeta,
-    preparedWriteToTagViewWithMeta,
-    session.executeWrite,
-    session.selectResultSet,
-    preparedWriteToTagProgress,
-    preparedWriteTagScanning)
 
   protected val tagWrites: Option[ActorRef] =
     if (config.eventsByTagEnabled)
-      Some(context.actorOf(TagWriters.props(config.tagWriterSettings, tagWriterSession)
+      Some(context.actorOf(TagWriters.props(config.tagWriterSettings, TagWritersSession(
+        preparedWriteToTagViewWithoutMeta,
+        preparedWriteToTagViewWithMeta,
+        session.executeWrite,
+        session.selectResultSet,
+        preparedWriteToTagProgress,
+        preparedWriteTagScanning))
         .withDispatcher(context.props.dispatcher), "tagWrites"))
     else None
 
@@ -550,7 +549,7 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
   private def executeBatch(body: BatchStatement ⇒ Unit, retryPolicy: RetryPolicy): Future[Unit] = {
     val batch = new BatchStatement().setConsistencyLevel(writeConsistency).setRetryPolicy(retryPolicy).asInstanceOf[BatchStatement]
     body(batch)
-    session.underlying().flatMap(_.executeAsync(batch)).map(_ => ())
+    session.underlying().flatMap(_.executeAsync(batch).asScala).map(_ => ())
   }
 
   private def minSequenceNr(partitionNr: Long): Long =

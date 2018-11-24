@@ -3,10 +3,15 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbt.Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
 
-val AkkaVersion = "2.5.17"
+val AkkaVersion = "2.5.18"
+
+val akkaCassandraSessionDependencies = Seq(
+  "com.datastax.cassandra"  % "cassandra-driver-core"               % "3.6.0",
+  "com.typesafe.akka"      %% "akka-stream"                    % AkkaVersion,
+  "com.typesafe.akka"      %% "akka-stream-testkit"                 % AkkaVersion     % Test
+)
 
 val akkaPersistenceCassandraDependencies = Seq(
-  "com.datastax.cassandra"  % "cassandra-driver-core"               % "3.6.0",
   "com.typesafe.akka"      %% "akka-persistence"                    % AkkaVersion,
   "com.typesafe.akka"      %% "akka-cluster-tools"                  % AkkaVersion,
   "com.typesafe.akka"      %% "akka-persistence-query"              % AkkaVersion,
@@ -63,7 +68,7 @@ def common: Seq[Setting[_]] = SbtScalariform.scalariformSettings ++ Seq(
 )
 
 lazy val root = (project in file("."))
-  .aggregate(core, cassandraLauncher)
+  .aggregate(core, cassandraLauncher, session)
   .settings(common: _*)
   .settings(
     name := "akka-persistence-cassandra-root",
@@ -74,9 +79,20 @@ lazy val root = (project in file("."))
     PgpKeys.publishSigned := {}
   )
 
+lazy val session = (project in file("session"))
+  .enablePlugins(AutomateHeaderPlugin, SbtOsgi)
+  .dependsOn(
+    cassandraLauncher % Test)
+  .settings(common: _*)
+  .settings(osgiSettings: _*)
+  .settings(
+     name := "akka-cassandra-session",
+     libraryDependencies ++=  akkaCassandraSessionDependencies
+  )
+
 lazy val core = (project in file("core"))
   .enablePlugins(AutomateHeaderPlugin, SbtOsgi, MultiJvmPlugin)
-  .dependsOn(cassandraLauncher % Test)
+  .dependsOn(cassandraLauncher % Test, session)
   .settings(common: _*)
   .settings(osgiSettings: _*)
   .settings(
@@ -88,7 +104,7 @@ lazy val core = (project in file("core"))
     OsgiKeys.privatePackage := Nil,
     testOptions in Test ++= Seq(Tests.Argument(TestFrameworks.ScalaTest, "-o"), Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports"))
   )
-  .configs( MultiJvm)
+  .configs(MultiJvm)
 
 lazy val cassandraLauncher = (project in file("cassandra-launcher"))
   .settings(common: _*)

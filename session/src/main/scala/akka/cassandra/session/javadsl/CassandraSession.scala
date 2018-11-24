@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
-package akka.persistence.cassandra.session.javadsl
+package akka.cassandra.session.javadsl
 
 import java.util.{ List => JList }
 import java.util.Optional
@@ -14,13 +14,11 @@ import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
 import scala.compat.java8.OptionConverters._
 import scala.concurrent.ExecutionContext
-
 import akka.Done
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.cassandra.session.{ CassandraSessionSettings, SessionProvider }
 import akka.event.LoggingAdapter
-import akka.persistence.cassandra.SessionProvider
-import akka.persistence.cassandra.session.CassandraSessionSettings
 import akka.stream.javadsl.Source
 import com.datastax.driver.core.BatchStatement
 import com.datastax.driver.core.PreparedStatement
@@ -38,7 +36,7 @@ import com.datastax.driver.core.Statement
  *
  * All methods are non-blocking.
  */
-final class CassandraSession(delegate: akka.persistence.cassandra.session.scaladsl.CassandraSession) {
+final class CassandraSession(delegate: akka.cassandra.session.scaladsl.CassandraSession) {
 
   /**
    * Use this constructor if you want to create a stand-alone `CassandraSession`.
@@ -51,9 +49,9 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     log:              LoggingAdapter,
     metricsCategory:  String,
     init:             JFunction[Session, CompletionStage[Done]]) =
-    this(new akka.persistence.cassandra.session.scaladsl.CassandraSession(
+    this(new akka.cassandra.session.scaladsl.CassandraSession(
       system, sessionProvider, settings, executionContext, log, metricsCategory,
-      (session => init.apply(session).toScala)))
+      session => init.apply(session).toScala))
 
   implicit private val ec = delegate.ec
 
@@ -83,7 +81,7 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     delegate.prepare(stmt).toJava
 
   /**
-   * Execute several statements in a batch. First you must [[#prepare]] the
+   * Execute several statements in a batch. First you must [[CassandraSession#prepare]] the
    * statements and bind its parameters.
    *
    * See <a href="http://docs.datastax.com/en/cql/3.3/cql/cql_using/useBatchTOC.html">Batching data insertion and updates</a>.
@@ -98,7 +96,7 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     delegate.executeWriteBatch(batch).toJava
 
   /**
-   * Execute one statement. First you must [[#prepare]] the
+   * Execute one statement. First you must [[CassandraSession#prepare]] the
    * statement and bind its parameters.
    *
    * See <a href="http://docs.datastax.com/en/cql/3.3/cql/cql_using/useInsertDataTOC.html">Inserting and updating data</a>.
@@ -127,7 +125,7 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     delegate.executeWrite(stmt, bindValues: _*).toJava
 
   /**
-   * Execute a select statement. First you must [[#prepare]] the
+   * Execute a select statement. First you must [[CassandraSession#prepare]] the
    * statement and bind its parameters.
    *
    * See <a href="http://docs.datastax.com/en/cql/3.3/cql/cql_using/useQueryDataTOC.html">Querying tables</a>.
@@ -156,7 +154,7 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     delegate.select(stmt, bindValues: _*).asJava
 
   /**
-   * Execute a select statement. First you must [[#prepare]] the statement and
+   * Execute a select statement. First you must [[CassandraSession#prepare]] the statement and
    * bind its parameters. Only use this method when you know that the result
    * is small, e.g. includes a `LIMIT` clause. Otherwise you should use the
    * `select` method that returns a `Source`.
@@ -183,7 +181,7 @@ final class CassandraSession(delegate: akka.persistence.cassandra.session.scalad
     delegate.selectAll(stmt, bindValues: _*).map(_.asJava).toJava
 
   /**
-   * Execute a select statement that returns one row. First you must [[#prepare]] the
+   * Execute a select statement that returns one row. First you must [[CassandraSession#prepare]] the
    * statement and bind its parameters.
    *
    * The configured read consistency level is used if a specific consistency

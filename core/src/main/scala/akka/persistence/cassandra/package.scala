@@ -29,26 +29,6 @@ import akka.annotation.InternalApi
 
 package object cassandra {
   private val timestampFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")
-
-  // TODO we should use the more explicit ListenableFutureConverter asScala instead
-  implicit def listenableFutureToFuture[A](lf: ListenableFuture[A])(implicit executionContext: ExecutionContext): Future[A] = {
-    val promise = Promise[A]
-    lf.addListener(new Runnable {
-      def run() = promise.complete(Try(lf.get()))
-    }, executionContext.asInstanceOf[Executor])
-    promise.future
-  }
-
-  implicit class ListenableFutureConverter[A](val lf: ListenableFuture[A]) extends AnyVal {
-    def asScala(implicit ec: ExecutionContext): Future[A] = {
-      val promise = Promise[A]
-      lf.addListener(new Runnable {
-        def run() = promise.complete(Try(lf.get()))
-      }, ec.asInstanceOf[Executor])
-      promise.future
-    }
-  }
-
   def formatOffset(uuid: UUID): String = {
     val time = LocalDateTime.ofInstant(Instant.ofEpochMilli(UUIDs.unixTimestamp(uuid)), ZoneOffset.UTC)
     s"$uuid (${timestampFormatter.format(time)})"
@@ -58,8 +38,6 @@ package object cassandra {
     val time = LocalDateTime.ofInstant(Instant.ofEpochMilli(unixTime), ZoneOffset.UTC)
     timestampFormatter.format(time)
   }
-
-  val FutureDone: Future[Done] = Future.successful(Done)
 
   def serializeEvent(p: PersistentRepr, tags: Set[String], uuid: UUID,
                      bucketSize: BucketSize, serialization: Serialization, system: ActorSystem)(implicit executionContext: ExecutionContext): Future[Serialized] = {

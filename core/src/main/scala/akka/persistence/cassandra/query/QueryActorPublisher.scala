@@ -14,7 +14,7 @@ import akka.pattern.pipe
 import akka.stream.actor.ActorPublisher
 import akka.stream.actor.ActorPublisherMessage.{ Cancel, Request, SubscriptionTimeoutExceeded }
 import com.datastax.driver.core.{ ResultSet, Row }
-import akka.persistence.cassandra._
+import akka.cassandra.session._
 import akka.persistence.cassandra.query.QueryActorPublisher._
 
 import scala.util.control.NonFatal
@@ -156,7 +156,7 @@ import java.util.concurrent.ThreadLocalRandom
 
     if (shouldFetchMore(
       availableWithoutFetching, isFullyFetched, totalDemand, state, finished, continue)) {
-      listenableFutureToFuture(resultSet.fetchMoreResults())
+      resultSet.fetchMoreResults().asScala
         .map(FetchedResultSet)
         .pipeTo(self)
       awaiting(resultSet, state, finished)
