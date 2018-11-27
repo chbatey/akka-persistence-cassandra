@@ -4,41 +4,42 @@
 
 package akka.persistence.cassandra.journal
 
-import java.lang.{ Long => JLong }
+import java.lang.{Long => JLong}
 import java.nio.ByteBuffer
-import java.util.{ UUID, HashMap => JHMap, Map => JMap }
+import java.util.{UUID, HashMap => JHMap, Map => JMap}
 
 import akka.Done
-import akka.actor.{ ActorRef, ActorSystem, ExtendedActorSystem, NoSerializationVerificationNeeded }
-import akka.annotation.{ DoNotInherit, InternalApi }
+import akka.actor.{ActorRef, ActorSystem, ExtendedActorSystem, NoSerializationVerificationNeeded}
+import akka.annotation.{DoNotInherit, InternalApi}
 import akka.cassandra.session.scaladsl.CassandraSession
-import akka.event.{ Logging, LoggingAdapter }
+import akka.event.{Logging, LoggingAdapter}
 import akka.persistence._
 import akka.persistence.cassandra.EventWithMetaData.UnknownMetaData
 import akka.persistence.cassandra._
-import akka.persistence.cassandra.journal.TagWriters.{ BulkTagWrite, TagWrite, TagWritersSession }
 import akka.persistence.cassandra.query.EventsByPersistenceIdStage.Extractors
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
-import akka.persistence.journal.{ AsyncWriteJournal, Tagged }
+import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.persistence.query.PersistenceQuery
-import akka.serialization.{ AsyncSerializer, Serialization, SerializationExtension }
+import akka.serialization.{AsyncSerializer, Serialization, SerializationExtension}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import akka.util.OptionVal
 import com.datastax.driver.core._
 import com.datastax.driver.core.exceptions.DriverException
 import com.datastax.driver.core.policies.RetryPolicy.RetryDecision
-import com.datastax.driver.core.policies.{ LoggingRetryPolicy, RetryPolicy }
-import com.datastax.driver.core.utils.{ Bytes, UUIDs }
+import com.datastax.driver.core.policies.{LoggingRetryPolicy, RetryPolicy}
+import com.datastax.driver.core.utils.{Bytes, UUIDs}
 import com.typesafe.config.Config
 import akka.cassandra.session._
+import akka.persistence.tags.TagWriters.BulkTagWrite
+import akka.persistence.tags._
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
 import scala.collection.immutable.Seq
 import scala.concurrent._
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 /**
  * Journal implementation of the cassandra plugin.
@@ -59,7 +60,7 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
   import CassandraJournal._
   import config._
 
-  implicit override val ec: ExecutionContext = context.dispatcher
+  implicit val ec: ExecutionContext = context.dispatcher
 
   // readHighestSequence must be performed after pending write for a persistenceId
   // when the persistent actor is restarted.
@@ -82,16 +83,10 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
     init = (session: Session) =>
       executeCreateKeyspaceAndTables(session, config))
 
-  protected val tagWrites: Option[ActorRef] =
+  // FIXME load from extension
+  protected val tagWrites =
     if (config.eventsByTagEnabled)
-      Some(context.actorOf(TagWriters.props(config.tagWriterSettings, TagWritersSession(
-        preparedWriteToTagViewWithoutMeta,
-        preparedWriteToTagViewWithMeta,
-        session.executeWrite,
-        session.selectResultSet,
-        preparedWriteToTagProgress,
-        preparedWriteTagScanning))
-        .withDispatcher(context.props.dispatcher), "tagWrites"))
+      Some(new CassandraTagWriterPlugin(context.system, cfg))
     else None
 
   def preparedWriteMessage = session.prepare(writeMessage(withMeta = false)).map(_.setIdempotent(true))
@@ -154,14 +149,6 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
       preparedInsertDeletedTo
       queries.initialize()
 
-      if (config.eventsByTagEnabled) {
-        preparedSelectTagProgress
-        preparedSelectTagProgressForPersistenceId
-        preparedWriteToTagProgress
-        preparedWriteToTagViewWithoutMeta
-        preparedWriteToTagViewWithMeta
-        preparedWriteTagScanning
-      }
   }
 
   private[akka] val writeRetryPolicy = new LoggingRetryPolicy(new FixedRetryPolicy(config.writeRetries))
@@ -227,11 +214,11 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
       result.map(_ => extractTagWrites(serialized))
     }
 
-    tws.onComplete { result =>
+    tws.onComplete { result: Try[BulkTagWrite] =>
       self ! WriteFinished(pid, p.future)
       p.success(Done)
       // notify TagWriters when write was successful
-      result.foreach(bulkTagWrite => tagWrites.foreach(_ ! bulkTagWrite))
+      result.foreach(bulkTagWrite => tagWrites.foreach(_.writeTag(bulkTagWrite)))
     }(akka.dispatch.ExecutionContexts.sameThreadExecutionContext)
 
     //Nil == all good
@@ -244,13 +231,16 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
    */
   protected def generateUUID(pr: PersistentRepr): UUID = UUIDs.timeBased()
 
-  private def extractTagWrites(serialized: Seq[SerializedAtomicWrite]): BulkTagWrite = {
-    if (serialized.isEmpty) BulkTagWrite(Nil, Nil)
+  def toTagSerialized(s: Serialized): TagWriteCat = ???
+
+
+  private def extractTagWrites(serialized: Seq[SerializedAtomicWrite]): BulkTagWriteCat = {
+    if (serialized.isEmpty) BulkTagWriteCat(Nil)
     else if (serialized.size == 1 && serialized.head.payload.size == 1) {
       // optimization for one single event, which is the typical case
       val s = serialized.head.payload.head
-      if (s.tags.isEmpty) BulkTagWrite(Nil, s :: Nil)
-      else BulkTagWrite(s.tags.map(tag => TagWrite(tag, s :: Nil))(collection.breakOut), Nil)
+      if (s.tags.isEmpty) BulkTagWriteCat(toTagSerialized(s) :: Nil)
+      else BulkTagWrite(s.tags.map(tag => TagWriteCat(tag, s :: Nil))(collection.breakOut))
     } else {
       val messagesByTag: Map[String, Seq[Serialized]] = serialized
         .flatMap(_.payload)
@@ -263,8 +253,8 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
           if b.tags.isEmpty
         } yield b
 
-      val writesWithTags: immutable.Seq[TagWrite] = messagesByTag.map {
-        case (tag, writes) => TagWrite(tag, writes)
+      val writesWithTags: immutable.Seq[TagWriteCat] = messagesByTag.map {
+        case (tag, writes) => TagWriteCat(tag, writes)
       }(collection.breakOut)
 
       BulkTagWrite(writesWithTags, messagesWithoutTag)
@@ -585,7 +575,7 @@ class CassandraJournal(cfg: Config) extends AsyncWriteJournal
 
   private[akka] case class Serialized(persistenceId: String, sequenceNr: Long, serialized: ByteBuffer, tags: Set[String],
                                       eventAdapterManifest: String, serManifest: String, serId: Int, writerUuid: String,
-                                      meta: Option[SerializedMeta], timeUuid: UUID, timeBucket: TimeBucket)
+                                      meta: Option[SerializedMeta], timeUuid: UUID, tmeBucket: TimeBucket)
 
   private[akka] case class SerializedMeta(serialized: ByteBuffer, serManifest: String, serId: Int)
 

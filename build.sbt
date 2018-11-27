@@ -4,6 +4,7 @@ import sbt.Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
 
 val AkkaVersion = "2.5.18"
+val ScalaTestVersion = "3.0.5"
 
 val akkaCassandraSessionDependencies = Seq(
   "com.datastax.cassandra"  % "cassandra-driver-core"               % "3.6.0",
@@ -19,9 +20,16 @@ val akkaPersistenceCassandraDependencies = Seq(
   "com.typesafe.akka"      %% "akka-stream-testkit"                 % AkkaVersion     % Test,
   "com.typesafe.akka"      %% "akka-multi-node-testkit"             % AkkaVersion     % Test,
   "ch.qos.logback"          % "logback-classic"                     % "1.2.3"         % Test,
-  "org.scalatest"          %% "scalatest"                           % "3.0.5"         % Test,
+  "org.scalatest"          %% "scalatest"                           % ScalaTestVersion         % Test,
   "org.pegdown"             % "pegdown"                             % "1.6.0"         % Test,
   "org.osgi"                % "org.osgi.core"                       % "5.0.0"         % Provided
+)
+
+val akkaTagsDependencies = Seq(
+  "com.typesafe.akka"      %% "akka-persistence"                    % AkkaVersion,
+  "com.typesafe.akka"      %% "akka-persistence-query"              % AkkaVersion,
+  "org.scalatest"          %% "scalatest"                           % ScalaTestVersion         % Test,
+  "com.typesafe.akka"      %% "akka-cluster-tools"                  % AkkaVersion
 )
 
 
@@ -92,7 +100,7 @@ lazy val session = (project in file("session"))
 
 lazy val core = (project in file("core"))
   .enablePlugins(AutomateHeaderPlugin, SbtOsgi, MultiJvmPlugin)
-  .dependsOn(cassandraLauncher % Test, session)
+  .dependsOn(cassandraLauncher % Test, session, tagWriter, cassandraTagWriter)
   .settings(common: _*)
   .settings(osgiSettings: _*)
   .settings(
@@ -105,6 +113,19 @@ lazy val core = (project in file("core"))
     testOptions in Test ++= Seq(Tests.Argument(TestFrameworks.ScalaTest, "-o"), Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports"))
   )
   .configs(MultiJvm)
+
+lazy val tagWriter = (project in file("tags"))
+  .settings(
+    name := "akka-persistence-tags",
+    libraryDependencies ++= akkaTagsDependencies
+  )
+
+lazy val cassandraTagWriter = (project in file("cassandra-tags"))
+  .dependsOn(tagWriter, session)
+  .settings(
+    name := "akka-persistence-cassandra-tags",
+    libraryDependencies ++= akkaTagsDependencies
+  )
 
 lazy val cassandraLauncher = (project in file("cassandra-launcher"))
   .settings(common: _*)
