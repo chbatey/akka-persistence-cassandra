@@ -10,22 +10,23 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.Executor
 
-import akka.persistence.cassandra.journal.{ BucketSize, TimeBucket }
 import akka.persistence.cassandra.journal.CassandraJournal.{ Serialized, SerializedMeta }
 import akka.serialization.Serialization
 import com.datastax.driver.core.utils.UUIDs
 import com.google.common.util.concurrent.ListenableFuture
+
 import scala.concurrent._
 import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
-
 import akka.actor.ActorSystem
 import akka.actor.ExtendedActorSystem
 import akka.serialization.AsyncSerializer
 import akka.serialization.Serializers
 import akka.Done
 import akka.annotation.InternalApi
+import akka.cassandra.common
+import akka.cassandra.common.TimeBucket
 
 package object cassandra {
   private val timestampFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")
@@ -40,7 +41,7 @@ package object cassandra {
   }
 
   def serializeEvent(p: PersistentRepr, tags: Set[String], uuid: UUID,
-                     bucketSize: BucketSize, serialization: Serialization, system: ActorSystem)(implicit executionContext: ExecutionContext): Future[Serialized] = {
+                     bucketSize: common.BucketSize, serialization: Serialization, system: ActorSystem)(implicit executionContext: ExecutionContext): Future[Serialized] = {
     try {
       // use same clock source as the UUID for the timeBucket
       val timeBucket = TimeBucket(UUIDs.unixTimestamp(uuid), bucketSize)

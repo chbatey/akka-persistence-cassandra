@@ -5,21 +5,22 @@
 package akka.persistence.cassandra.query
 
 import java.time.temporal.ChronoUnit
-import java.time.{ LocalDateTime, ZoneOffset }
+import java.time.{LocalDateTime, ZoneOffset}
 import java.util.UUID
 
-import akka.actor.{ PoisonPill, Props }
+import akka.actor.{PoisonPill, Props}
+import akka.cassandra.common.Day
 import akka.event.Logging.Warning
-import akka.persistence.cassandra.journal.{ CassandraJournalConfig, CassandraStatements, Day }
-import akka.persistence.cassandra.{ CassandraLifecycle, CassandraSpec, EventWithMetaData }
-import akka.persistence.journal.{ Tagged, WriteEventAdapter }
-import akka.persistence.query.scaladsl.{ CurrentEventsByTagQuery, EventsByTagQuery }
-import akka.persistence.query.{ EventEnvelope, NoOffset, TimeBasedUUID }
-import akka.persistence.{ PersistentActor, PersistentRepr }
+import akka.persistence.cassandra.journal.{CassandraJournalConfig, CassandraStatements }
+import akka.persistence.cassandra.{CassandraLifecycle, CassandraSpec, EventWithMetaData}
+import akka.persistence.journal.{Tagged, WriteEventAdapter}
+import akka.persistence.query.scaladsl.{CurrentEventsByTagQuery, EventsByTagQuery}
+import akka.persistence.query.{EventEnvelope, NoOffset, TimeBasedUUID}
+import akka.persistence.{PersistentActor, PersistentRepr}
 import akka.serialization.SerializationExtension
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestProbe
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.BeforeAndAfterEach
 
 import scala.concurrent.Await
@@ -48,7 +49,7 @@ object EventsByTagSpec {
       }
 
       events-by-tag {
-        flush-interval = 0ms
+        flush-interval = 250ms
         bucket-size = Day
         time-to-live = 1d
       }

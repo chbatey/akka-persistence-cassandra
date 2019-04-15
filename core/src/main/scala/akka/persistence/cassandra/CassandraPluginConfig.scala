@@ -3,15 +3,14 @@
  */
 
 package akka.persistence.cassandra
-
-import akka.persistence.cassandra.compaction.CassandraCompactionStrategy
 import com.datastax.driver.core._
 import com.typesafe.config.Config
 
 import scala.collection.JavaConverters._
 import akka.actor.ActorSystem
 import akka.actor.ExtendedActorSystem
-import akka.cassandra.session.{ CassandraSessionSettings, SessionProvider }
+import akka.cassandra.common.compaction.CassandraCompactionStrategy
+import akka.cassandra.session.{CassandraSessionSettings, SessionProvider}
 
 case class StorePathPasswordConfig(path: String, password: String)
 

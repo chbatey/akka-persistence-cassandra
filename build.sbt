@@ -5,11 +5,20 @@ import sbtassembly.AssemblyPlugin.autoImport._
 
 val AkkaVersion = "2.5.18"
 val ScalaTestVersion = "3.0.5"
+val CassandraDriverVersion = "3.6.0"
 
 val akkaCassandraSessionDependencies = Seq(
-  "com.datastax.cassandra"  % "cassandra-driver-core"               % "3.6.0",
+  "com.datastax.cassandra"  % "cassandra-driver-core"               % CassandraDriverVersion,
   "com.typesafe.akka"      %% "akka-stream"                    % AkkaVersion,
-  "com.typesafe.akka"      %% "akka-stream-testkit"                 % AkkaVersion     % Test
+  "com.typesafe.akka"      %% "akka-stream-testkit"                 % AkkaVersion     % Test,
+  "org.scalatest"          %% "scalatest"                           % ScalaTestVersion         % Test
+)
+
+
+val commonCodeDependencies = Seq(
+  "com.datastax.cassandra"  % "cassandra-driver-core"               % CassandraDriverVersion,
+  "com.typesafe.akka"      %% "akka-persistence"                    % AkkaVersion,
+  "org.scalatest"          %% "scalatest"                           % ScalaTestVersion         % Test
 )
 
 val akkaPersistenceCassandraDependencies = Seq(
@@ -30,6 +39,10 @@ val akkaTagsDependencies = Seq(
   "com.typesafe.akka"      %% "akka-persistence-query"              % AkkaVersion,
   "org.scalatest"          %% "scalatest"                           % ScalaTestVersion         % Test,
   "com.typesafe.akka"      %% "akka-cluster-tools"                  % AkkaVersion
+)
+
+val akkaCassandraTagsDependencies = Seq(
+  "com.typesafe.akka"      %% "akka-stream-testkit"                 % AkkaVersion     % Test,
 )
 
 
@@ -76,7 +89,7 @@ def common: Seq[Setting[_]] = SbtScalariform.scalariformSettings ++ Seq(
 )
 
 lazy val root = (project in file("."))
-  .aggregate(core, cassandraLauncher, session)
+  .aggregate(core, cassandraLauncher, session, commonCode, tagWriter)
   .settings(common: _*)
   .settings(
     name := "akka-persistence-cassandra-root",
@@ -85,6 +98,11 @@ lazy val root = (project in file("."))
     publishTo := Some(Resolver.file("Unused transient repository", file("target/unusedrepo"))),
     publish := {},
     PgpKeys.publishSigned := {}
+  )
+
+lazy val commonCode = (project in file("common"))
+  .settings(
+    libraryDependencies ++= commonCodeDependencies,
   )
 
 lazy val session = (project in file("session"))
@@ -100,7 +118,8 @@ lazy val session = (project in file("session"))
 
 lazy val core = (project in file("core"))
   .enablePlugins(AutomateHeaderPlugin, SbtOsgi, MultiJvmPlugin)
-  .dependsOn(cassandraLauncher % Test, session, tagWriter, cassandraTagWriter)
+  .dependsOn(cassandraLauncher % Test, session, tagWriter, commonCode)
+  .dependsOn(cassandraTagWriter) // FIXME, do it via an extension
   .settings(common: _*)
   .settings(osgiSettings: _*)
   .settings(
@@ -121,10 +140,10 @@ lazy val tagWriter = (project in file("tags"))
   )
 
 lazy val cassandraTagWriter = (project in file("cassandra-tags"))
-  .dependsOn(tagWriter, session)
+  .dependsOn(tagWriter, session, commonCode)
   .settings(
     name := "akka-persistence-cassandra-tags",
-    libraryDependencies ++= akkaTagsDependencies
+    libraryDependencies ++= akkaCassandraTagsDependencies
   )
 
 lazy val cassandraLauncher = (project in file("cassandra-launcher"))

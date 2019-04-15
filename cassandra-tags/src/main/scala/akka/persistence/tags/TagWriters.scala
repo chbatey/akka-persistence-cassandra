@@ -5,31 +5,30 @@
 package akka.persistence.tags
 
 import scala.collection.immutable
-import java.lang.{Integer => JInt, Long => JLong}
+import java.lang.{ Integer => JInt, Long => JLong }
 import java.net.URLEncoder
 import java.util.UUID
 
 import akka.Done
 import akka.pattern.ask
 import akka.pattern.pipe
-import akka.actor.{Actor, ActorLogging, ActorRef, NoSerializationVerificationNeeded, Props}
+import akka.actor.{ Actor, ActorLogging, ActorRef, NoSerializationVerificationNeeded, Props }
 import akka.annotation.InternalApi
 import akka.util.Timeout
-import com.datastax.driver.core.{BatchStatement, PreparedStatement, ResultSet, Statement}
+import com.datastax.driver.core.{ BatchStatement, PreparedStatement, ResultSet, Statement }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
 import akka.actor.Timers
 import akka.util.ByteString
 import akka.persistence.tags.TagWriter._
 
-
 private[akka] case class TagWritersSession(
-                                            tagWritePs: Future[PreparedStatement],
-                                            executeStatement: Statement => Future[Done],
-                                            selectStatement: Statement => Future[ResultSet],
-                                            tagProgressPs: Future[PreparedStatement],
-                                            tagScanningPs: Future[PreparedStatement]) {
+  tagWritePs: Future[PreparedStatement],
+  executeStatement: Statement => Future[Done],
+  selectStatement: Statement => Future[ResultSet],
+  tagProgressPs: Future[PreparedStatement],
+  tagScanningPs: Future[PreparedStatement]) {
 
   import TagWriters._
 
@@ -46,14 +45,13 @@ private[akka] case class TagWritersSession(
             event.timeBucket.key: JLong,
             event.timeUuid,
             pidTagSequenceNr: JLong,
-            event.tagWrite.write.serialized,
-            event.tagWrite.write.eventAdapterManifest,
-            event.tagWrite.persistenceId,
-            event.tagWrite.sequenceNr: JLong,
-            event.tagWrite.write.serId: JInt,
-            event.tagWrite.write.serManifest,
-            event.tagWrite.write.writerUuid
-          )
+            event.tagSerialized.serialized,
+            event.tagSerialized.eventAdapterManifest,
+            event.persistenceId,
+            event.sequenceNr: JLong,
+            event.tagSerialized.serId: JInt,
+            event.tagSerialized.serManifest,
+            event.tagSerialized.writerUuid)
           batch.add(bound)
         }
       }
@@ -76,14 +74,14 @@ object TagWriters {
   type TagPidSequenceNr = Long
 
   /**
-    * All tag writes should be for the same persistenceId
-    */
-  case class BulkTagWrite(tagWrites: immutable.Seq[CassandraTagWrite], withoutTags: immutable.Seq[CassandraTagSerialized])
+   * All tag writes should be for the same persistenceId
+   */
+  case class CassandraBulkTagWrite(tagWrites: immutable.Seq[CassandraTagWrite], withoutTags: immutable.Seq[CassandraTagSerialized])
     extends NoSerializationVerificationNeeded
 
   /**
-    * All serialised should be for the same persistenceId
-    */
+   * All serialised should be for the same persistenceId
+   */
   private[akka] case class CassandraTagWrite(tag: Tag, serialised: immutable.Seq[CassandraTagSerialized])
     extends NoSerializationVerificationNeeded
 
@@ -109,8 +107,8 @@ object TagWriters {
 }
 
 /**
-  * Manages all the tag writers.
-  */
+ * Manages all the tag writers.
+ */
 @InternalApi private[akka] class TagWriters(settings: TagWriterSettings, tagWriterSession: TagWritersSession)
   extends Actor with Timers with ActorLogging {
 
@@ -145,7 +143,7 @@ object TagWriters {
     case tw: CassandraTagWrite =>
       updatePendingScanning(tw.serialised)
       tagActor(tw.tag) forward tw
-    case BulkTagWrite(tws, withoutTags) =>
+    case CassandraBulkTagWrite(tws, withoutTags) =>
       tws.foreach { tw =>
         updatePendingScanning(tw.serialised)
         tagActor(tw.tag) forward tw
@@ -207,12 +205,12 @@ object TagWriters {
 
   private def updatePendingScanning(serialized: immutable.Seq[CassandraTagSerialized]): Unit = {
     serialized.foreach { ser =>
-      pendingScanning.get(ser.tagWrite.persistenceId) match {
+      pendingScanning.get(ser.persistenceId) match {
         case Some(seqNr) =>
-          if (ser.tagWrite.sequenceNr > seqNr) // collect highest
-            pendingScanning = pendingScanning.updated(ser.tagWrite.persistenceId, ser.tagWrite.sequenceNr)
+          if (ser.sequenceNr > seqNr) // collect highest
+            pendingScanning = pendingScanning.updated(ser.persistenceId, ser.sequenceNr)
         case None =>
-          pendingScanning = pendingScanning.updated(ser.tagWrite.persistenceId, ser.tagWrite.sequenceNr)
+          pendingScanning = pendingScanning.updated(ser.persistenceId, ser.sequenceNr)
       }
     }
   }
@@ -232,9 +230,9 @@ object TagWriters {
         case (pid, seqNr) =>
           tagWriterSession.executeStatement(ps.bind(pid, seqNr: JLong))
             .failed.foreach { t =>
-            log.warning("Writing tag scanning failed. Reason {}", t)
-            self ! TagWriteFailed(t)
-          }
+              log.warning("Writing tag scanning failed. Reason {}", t)
+              self ! TagWriteFailed(t)
+            }
       }
     }
   }

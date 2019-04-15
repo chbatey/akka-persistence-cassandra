@@ -9,7 +9,6 @@ import java.util.concurrent.ThreadLocalRandom
 
 import akka.annotation.InternalApi
 import akka.persistence.cassandra._
-import akka.persistence.cassandra.journal.{ BucketSize, TimeBucket }
 import akka.persistence.cassandra.query.EventsByTagStage._
 import akka.stream.stage.{ GraphStage, _ }
 import akka.stream.{ ActorMaterializer, Attributes, Outlet, SourceShape }
@@ -22,6 +21,7 @@ import scala.concurrent.{ ExecutionContext, ExecutionContextExecutor, Future }
 import scala.util.{ Failure, Success, Try }
 import java.lang.{ Long => JLong }
 
+import akka.cassandra.common.{ BucketSize, TimeBucket }
 import akka.cluster.pubsub.{ DistributedPubSub, DistributedPubSubMediator }
 import akka.persistence.cassandra.journal.CassandraJournal._
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal.CombinedEventsByTagStmts

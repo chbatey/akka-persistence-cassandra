@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.{ Done, NotUsed }
 import akka.actor.ExtendedActorSystem
 import akka.annotation.InternalApi
+import akka.cassandra.common.TimeBucket
 import akka.event.Logging
 import akka.persistence.cassandra.journal.CassandraJournal.{ PersistenceId, Tag, TagPidSequenceNr }
 import akka.persistence.cassandra.journal._
@@ -32,12 +33,12 @@ import com.datastax.driver.core._
 import com.datastax.driver.core.policies.{ LoggingRetryPolicy, RetryPolicy }
 import com.datastax.driver.core.utils.UUIDs
 import com.typesafe.config.Config
+
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
 import scala.util.control.NonFatal
-
 import akka.serialization.SerializationExtension
 
 object CassandraReadJournal {

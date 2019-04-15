@@ -3,16 +3,17 @@
  */
 
 package akka.persistence.cassandra
-
+/*
 import scala.concurrent.ExecutionContext
-
 import akka.actor.ActorSystem
+import akka.cassandra.common
+import akka.cassandra.common.TimeBucket
 import akka.pattern.ask
 import akka.event.Logging
 import akka.persistence.PersistentRepr
 import akka.persistence.cassandra.journal.CassandraJournal._
 import akka.persistence.cassandra.journal.TagWriter.TagProgress
-import akka.persistence.cassandra.journal.TagWriters.{ AllFlushed, FlushAllTagWriters, TagWritersSession }
+import akka.persistence.cassandra.journal.TagWriters.{AllFlushed, FlushAllTagWriters, TagWritersSession}
 import akka.persistence.cassandra.journal._
 import akka.persistence.cassandra.query.EventsByPersistenceIdStage.RawEvent
 import akka.persistence.cassandra.query.EventsByPersistenceIdStage.Extractors.Extractor
@@ -20,12 +21,13 @@ import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.cassandra.session.scaladsl.CassandraSession
 import akka.persistence.query.PersistenceQuery
 import akka.serialization.SerializationExtension
-import akka.stream.{ ActorMaterializer, OverflowStrategy }
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.{ActorMaterializer, OverflowStrategy}
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
-import akka.{ Done, NotUsed }
+import akka.{Done, NotUsed}
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.utils.Bytes
+
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -33,7 +35,7 @@ object EventsByTagMigration {
   def apply(system: ActorSystem): EventsByTagMigration = new EventsByTagMigration(system)
 
   // Extracts a Cassandra Row, assuming the pre 0.80 schema into a [[RawEvent]]
-  def rawPayloadOldTagSchemaExtractor(bucketSize: BucketSize, ed: EventDeserializer, system: ActorSystem): Extractor[RawEvent] =
+  def rawPayloadOldTagSchemaExtractor(bucketSize: common.BucketSize, ed: EventDeserializer, system: ActorSystem): Extractor[RawEvent] =
     new Extractor[RawEvent](ed, SerializationExtension(system)) {
       override def extract(row: Row, async: Boolean)(implicit ec: ExecutionContext): Future[RawEvent] = {
         // Get the tags from the old location i.e. tag1, tag2, tag3
@@ -219,4 +221,6 @@ class EventsByTagMigration(system: ActorSystem)
     } yield Done
   }
 
+
 }
+*/

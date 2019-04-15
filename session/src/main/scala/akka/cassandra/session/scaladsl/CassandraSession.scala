@@ -200,7 +200,10 @@ final class CassandraSession(
   def executeCreateTable(stmt: String): Future[Done] = {
     for {
       s <- underlying()
-      _ <- s.executeAsync(stmt).asScala
+      _ <- {
+        println("Executing: " + stmt)
+        s.executeAsync(stmt).asScala
+      }
     } yield Done
   }
 
@@ -210,6 +213,7 @@ final class CassandraSession(
    */
   def prepare(stmt: String): Future[PreparedStatement] =
     underlying().flatMap { _ =>
+      println("Preparing: " + stmt)
       preparedStatements.computeIfAbsent(stmt, computePreparedStatement)
     }
 

@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
-package akka.persistence.cassandra.journal
+package akka.cassandra.common
 
 import org.scalatest.{ Matchers, WordSpec }
 

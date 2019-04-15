@@ -5,11 +5,13 @@
 package akka.persistence.cassandra
 
 import akka.actor.ActorSystem
-import akka.persistence.cassandra.journal.{ CassandraJournalConfig, Day, Hour, TimeBucket }
+import akka.cassandra.common
+import akka.cassandra.common.TimeBucket
+import akka.persistence.cassandra.journal.CassandraJournalConfig
 import akka.persistence.cassandra.query.CassandraReadJournalConfig
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{ BeforeAndAfterAll, Matchers, WordSpecLike }
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 class CassandraReadJournalConfigSpec extends TestKit(ActorSystem("CassandraReadJournalConfigSpec"))
   with WordSpecLike
@@ -28,7 +30,7 @@ class CassandraReadJournalConfigSpec extends TestKit(ActorSystem("CassandraReadJ
       val writeConfig = new CassandraJournalConfig(system, config.getConfig("cassandra-journal"))
       val readConfig = new CassandraReadJournalConfig(config.getConfig("cassandra-query-journal"), writeConfig)
 
-      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, Day)
+      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, common.Day)
     }
 
     "support Day with full time format" in {
@@ -41,7 +43,7 @@ class CassandraReadJournalConfigSpec extends TestKit(ActorSystem("CassandraReadJ
       val readConfig = new CassandraReadJournalConfig(config.getConfig("cassandra-query-journal"), writeConfig)
 
       // Rounded down
-      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, Day)
+      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, common.Day)
     }
 
     "support Hour with just hour format" in {
@@ -53,7 +55,7 @@ class CassandraReadJournalConfigSpec extends TestKit(ActorSystem("CassandraReadJ
       val writeConfig = new CassandraJournalConfig(system, config.getConfig("cassandra-journal"))
       val readConfig = new CassandraReadJournalConfig(config.getConfig("cassandra-query-journal"), writeConfig)
 
-      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, Hour)
+      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, common.Hour)
     }
 
     "support Hour with full time format" in {
@@ -65,7 +67,7 @@ class CassandraReadJournalConfigSpec extends TestKit(ActorSystem("CassandraReadJ
       val writeConfig = new CassandraJournalConfig(system, config.getConfig("cassandra-journal"))
       val readConfig = new CassandraReadJournalConfig(config.getConfig("cassandra-query-journal"), writeConfig)
 
-      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, Hour)
+      readConfig.firstTimeBucket shouldEqual TimeBucket(1447977600000L, common.Hour)
     }
 
     "validate format" in {

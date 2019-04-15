@@ -2,6 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
+/*
 package akka.persistence.cassandra.journal
 
 import java.nio.ByteBuffer
@@ -623,3 +624,4 @@ class TagWriterSpec extends TestKit(ActorSystem("TagWriterSpec", TagWriterSpec.c
   }
 
 }
+*/

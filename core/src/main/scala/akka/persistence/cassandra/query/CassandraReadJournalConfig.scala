@@ -8,7 +8,8 @@ import java.time.{ LocalDateTime, ZoneOffset }
 
 import akka.actor.NoSerializationVerificationNeeded
 import akka.annotation.InternalApi
-import akka.persistence.cassandra.journal.{ CassandraJournalConfig, Day, Hour, TimeBucket }
+import akka.cassandra.common.{ Day, Hour, TimeBucket }
+import akka.persistence.cassandra.journal.CassandraJournalConfig
 import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.Config
 
@@ -54,7 +55,8 @@ import scala.concurrent.duration._
   val keyspace: String = writePluginConfig.keyspace
   val targetPartitionSize: Long = writePluginConfig.targetPartitionSize
   val table: String = writePluginConfig.table
-  val pubsubNotification: Boolean = writePluginConfig.tagWriterSettings.pubsubNotification
+  // FIXME
+  val pubsubNotification: Boolean = false //writePluginConfig.tagWriterSettings.pubsubNotification
   val eventsByPersistenceIdEventTimeout: FiniteDuration = config.getDuration("events-by-persistence-id-gap-timeout", MILLISECONDS).millis
 
   val eventsByTagGapTimeout: FiniteDuration = config.getDuration("events-by-tag.gap-timeout", MILLISECONDS).millis

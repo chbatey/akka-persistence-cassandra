@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
-package akka.persistence.tags
+package akka.cassandra.common
 
 import java.util.UUID
 
@@ -10,6 +10,7 @@ import akka.annotation.InternalApi
 import akka.util.HashCode
 import com.datastax.driver.core.utils.UUIDs
 
+// FIXME where should this belong? A common module betweek core and cassandra tags?
 @InternalApi private[akka] object TimeBucket {
 
   def apply(timeuuid: UUID, bucketSize: BucketSize): TimeBucket =
@@ -68,8 +69,6 @@ import com.datastax.driver.core.utils.UUIDs
     result = HashCode.hash(result, bucketSize)
     result
   }
-
-  import akka.persistence.cassandra._
 
   override def toString = s"TimeBucket($key, $bucketSize, inPast: $inPast, currentBucket: $isCurrent. time: ${formatUnixTime(key)} )"
 }

@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
-package akka.persistence.cassandra.compaction
+package akka.cassandra.common.compaction
 
 import java.util.concurrent.TimeUnit
 

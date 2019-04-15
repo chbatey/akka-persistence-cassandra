@@ -5,10 +5,11 @@
 package akka.persistence.cassandra.query
 
 import java.nio.ByteBuffer
-import java.time.{ LocalDateTime, ZoneOffset }
+import java.time.{LocalDateTime, ZoneOffset}
 import java.util.UUID
 
 import akka.actor.ActorSystem
+import akka.cassandra.common.{BucketSize, TimeBucket}
 import akka.persistence.PersistentRepr
 import akka.persistence.cassandra.formatOffset
 import akka.persistence.cassandra.journal._

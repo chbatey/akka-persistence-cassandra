@@ -88,6 +88,8 @@ abstract class CassandraSpec(config: Config, val journalName: String = getCaller
 
   lazy val queryJournal = PersistenceQuery(system).readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
 
+  println("Using keyspace: " + journalName)
+
   override def port(): Int = CassandraLifecycle.mode match {
     case External => 9042
     case Embedded => randomPort

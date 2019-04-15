@@ -4,18 +4,19 @@
 
 package akka.persistence.cassandra.query
 
-import java.time.{ LocalDateTime, ZoneOffset }
+import java.time.{LocalDateTime, ZoneOffset}
 
 import akka.NotUsed
 import akka.actor.ActorRef
+import akka.cassandra.common.{Minute, TimeBucket}
 import akka.persistence.PersistentRepr
-import akka.persistence.cassandra.journal.{ CassandraJournalConfig, Minute, TimeBucket }
-import akka.persistence.cassandra.{ CassandraLifecycle, CassandraSpec }
+import akka.persistence.cassandra.journal.CassandraJournalConfig
+import akka.persistence.cassandra.{CassandraLifecycle, CassandraSpec}
 import akka.persistence.journal.Tagged
 import akka.persistence.query.scaladsl.EventsByTagQuery
-import akka.persistence.query.{ EventEnvelope, NoOffset }
-import akka.serialization.{ Serialization, SerializationExtension }
-import akka.stream.scaladsl.{ Keep, Source }
+import akka.persistence.query.{EventEnvelope, NoOffset}
+import akka.serialization.{Serialization, SerializationExtension}
+import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.ImplicitSender
 import com.datastax.driver.core.utils.UUIDs

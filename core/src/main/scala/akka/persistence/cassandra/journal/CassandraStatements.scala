@@ -50,47 +50,6 @@ trait CassandraStatements {
       |  AND compaction = ${indent(config.tableCompactionStrategy.asCQL, "    ")}
     """.stripMargin.trim
 
-  private[akka] def createTagsTable =
-    s"""
-      |CREATE TABLE IF NOT EXISTS ${tagTableName} (
-      |  tag_name text,
-      |  persistence_id text,
-      |  sequence_nr bigint,
-      |  timebucket bigint,
-      |  timestamp timeuuid,
-      |  tag_pid_sequence_nr bigint,
-      |  writer_uuid text,
-      |  ser_id int,
-      |  ser_manifest text,
-      |  event_manifest text,
-      |  event blob,
-      |  meta_ser_id int,
-      |  meta_ser_manifest text,
-      |  meta blob,
-      |  PRIMARY KEY ((tag_name, timebucket), timestamp, persistence_id, tag_pid_sequence_nr))
-      |  WITH gc_grace_seconds =${config.tagTable.gcGraceSeconds}
-      |  AND compaction = ${indent(config.tagTable.compactionStrategy.asCQL, "    ")}
-      |  ${if (config.tagTable.ttl.isDefined) "AND default_time_to_live = " + config.tagTable.ttl.get.toSeconds else ""}
-    """.stripMargin.trim
-
-  def createTagsProgressTable =
-    s"""
-     |CREATE TABLE IF NOT EXISTS $tagProgressTableName(
-     |  persistence_id text,
-     |  tag text,
-     |  sequence_nr bigint,
-     |  tag_pid_sequence_nr bigint,
-     |  offset timeuuid,
-     |  PRIMARY KEY (persistence_id, tag))
-     """.stripMargin.trim
-
-  def createTagScanningTable =
-    s"""
-     |CREATE TABLE IF NOT EXISTS $tagScanningTableName(
-     |  persistence_id text,
-     |  sequence_nr bigint,
-     |  PRIMARY KEY (persistence_id))
-     """.stripMargin.trim
 
   private[akka] def createMetadataTable =
     s"""
@@ -300,6 +259,7 @@ trait CassandraStatements {
 
     def create(): Future[Done] = {
 
+      /**
       def tagStatements: Future[Done] =
         if (config.eventsByTagEnabled) {
           for {
@@ -308,6 +268,7 @@ trait CassandraStatements {
             _ <- session.executeAsync(createTagScanningTable).asScala
           } yield Done
         } else FutureDone
+      */
 
       val keyspace: Future[Done] =
         if (config.keyspaceAutoCreate) session.executeAsync(createKeyspace).asScala.map(_ => Done)
@@ -317,8 +278,7 @@ trait CassandraStatements {
         for {
           _ <- keyspace
           _ <- session.executeAsync(createTable).asScala
-          _ <- session.executeAsync(createMetadataTable).asScala
-          done <- tagStatements
+          done <- session.executeAsync(createMetadataTable).asScala.map(_ => Done)
         } yield done
       } else keyspace
     }

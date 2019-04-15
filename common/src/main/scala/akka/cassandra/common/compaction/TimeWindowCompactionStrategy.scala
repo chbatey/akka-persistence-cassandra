@@ -2,11 +2,11 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 
-package akka.persistence.cassandra.compaction
+package akka.cassandra.common.compaction
 
 import java.util.concurrent.TimeUnit
 
-import akka.persistence.cassandra.compaction.TimeWindowCompactionStrategy._
+import TimeWindowCompactionStrategy._
 import com.typesafe.config.Config
 
 class TimeWindowCompactionStrategy(config: Config) extends BaseCompactionStrategy(config, ClassName, propertyKeys) {

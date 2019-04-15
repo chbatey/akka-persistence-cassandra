@@ -4,6 +4,7 @@
 
 package akka.persistence.cassandra.journal
 
+/*
 import akka.actor.{ Actor, ActorRef, ActorSystem, PoisonPill, Props }
 import akka.persistence.cassandra.journal.TagWriter._
 import akka.persistence.cassandra.journal.TagWriters._
@@ -124,3 +125,5 @@ class TagWritersSpec extends TestKit(ActorSystem("TagWriterSpec"))
     shutdown()
   }
 }
+
+*/
