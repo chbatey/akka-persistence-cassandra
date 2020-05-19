@@ -66,15 +66,16 @@ lazy val endToEndExample = (project in file("example"))
     //dockerRepository := Some("some-registry"),
     dockerCommands ++= Seq(
         Cmd("USER", "root"),
-        Cmd("RUN", "/sbin/apk", "add", "--no-cache", "bash", "bind-tools", "busybox-extras", "curl", "iptables"),
-        Cmd(
-          "RUN",
-          "/sbin/apk",
-          "add",
-          "--no-cache",
-          "jattach",
-          "--repository",
-          "http://dl-cdn.alpinelinux.org/alpine/edge/community/"),
+//        Cmd("RUN", "/sbin/apk", "add", "--no-cache", bind-tools", "busybox-extras", "curl", "iptables"),
+        Cmd("RUN", "/sbin/apk", "add", "--no-cache", "bash"),
+//        Cmd(
+//          "RUN",
+//          "/sbin/apk",
+//          "add",
+//          "--no-cache",
+//          "jattach",
+//          "--repository",
+//          "http://dl-cdn.alpinelinux.org/alpine/edge/community/"),
         Cmd("RUN", "chgrp -R 0 . && chmod -R g=u .")),
     // Docker image is only for running in k8s
     javaOptions in Universal ++= Seq("-J-Dconfig.resource=kubernetes.conf"))
