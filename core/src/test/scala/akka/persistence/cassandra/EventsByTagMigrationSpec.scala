@@ -21,14 +21,14 @@ import akka.testkit.TestProbe
 import akka.{ Done, NotUsed }
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import akka.persistence.cassandra.journal.TimeBucket
 import akka.serialization.Serializers
-import com.datastax.oss.driver.api.core.cql.SimpleStatement
+import com.datastax.oss.driver.api.core.cql.{ BatchStatement, BatchType, BoundStatement, SimpleStatement }
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import scala.util.control.NonFatal
 
+import scala.util.control.NonFatal
 import akka.persistence.cassandra.reconciler.Reconciliation
 import akka.stream.SystemMaterializer
 import akka.stream.alpakka.cassandra.scaladsl.CassandraSessionRegistry
@@ -45,7 +45,7 @@ object EventsByTagMigrationSpec {
        // disable normal failure logging as tall these tests are related 
        // so if one fails need the logs for all
        akka.loggers = []
-       akka.loglevel = DEBUG
+       akka.loglevel = INFO
        akka {
          actor.serialize-messages=off
          actor.debug.unhandled = on
@@ -75,8 +75,8 @@ class EventsByTagMigrationProvidePersistenceIds extends AbstractEventsByTagMigra
       writeOldTestEventWithTags(PersistentRepr("f-1", 1, pidTwo), Set("blue"))
       writeOldTestEventWithTags(PersistentRepr("f-2", 2, pidTwo), Set("blue"))
 
-      migrator.createTables()
-      migrator.addTagsColumn()
+      migrator.createTables().futureValue shouldEqual Done
+      migrator.addTagsColumn().futureValue shouldEqual Done
 
       migrator.migratePidsToTagViews(List(pidOne)).futureValue shouldEqual Done
 
@@ -321,7 +321,7 @@ class EventsByTagMigrationSpec extends AbstractEventsByTagMigrationSpec {
 }
 
 abstract class AbstractEventsByTagMigrationSpec
-    extends CassandraSpec(EventsByTagMigrationSpec.config)
+    extends CassandraSpec(EventsByTagMigrationSpec.config, dumpRowsOnFailure = false)
     with DirectWriting
     with BeforeAndAfterAll {
 
@@ -469,10 +469,7 @@ abstract class AbstractEventsByTagMigrationSpec
   def writeToDeletedTo(persistenceId: String, deletedTo: Long): Unit =
     cluster.execute(preparedWriteDeletedTo.bind(persistenceId, deletedTo: JLong))
 
-  def writeOldTestEventWithTags(
-      persistent: PersistentRepr,
-      tags: Set[String],
-      metadata: Option[String] = None): Unit = {
+  def boundStatement(persistent: PersistentRepr, tags: Set[String], metadata: Option[String] = None): BoundStatement = {
     require(tags.size <= 3)
     val event = persistent.payload.asInstanceOf[AnyRef]
     val serializer = serialization.findSerializerFor(event)
@@ -498,7 +495,7 @@ abstract class AbstractEventsByTagMigrationSpec
       .setString("event_manifest", persistent.manifest)
       .setByteBuffer("event", serialized)
 
-    val finished = metadata match {
+    metadata match {
       case Some(m) =>
         val meta = m.asInstanceOf[AnyRef]
         val metaSerialiser = serialization.findSerializerFor(meta)
@@ -512,7 +509,23 @@ abstract class AbstractEventsByTagMigrationSpec
         bound
 
     }
-    cluster.execute(finished)
+  }
+  def writeOldTestEventWithTagsBatch(
+      persistent: Seq[PersistentRepr],
+      tags: Set[String],
+      metadata: Option[String] = None): Unit = {
+
+    import akka.util.ccompat.JavaConverters._
+    val all: Seq[BoundStatement] = persistent.map(p => boundStatement(p, tags, metadata))
+    val batch = BatchStatement.newInstance(BatchType.UNLOGGED).addAll(all.asJava)
+    cluster.execute(batch)
+  }
+
+  def writeOldTestEventWithTags(
+      persistent: PersistentRepr,
+      tags: Set[String],
+      metadata: Option[String] = None): Unit = {
+    cluster.execute(boundStatement(persistent, tags, metadata))
     system.log.debug("Directly wrote payload [{}] for entity [{}]", persistent.payload, persistent.persistenceId)
   }
 
